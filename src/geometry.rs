@@ -172,6 +172,18 @@ impl<T> RaytracerVector<T, 3>
 where
     T: Mul<Output = T> + Sub<Output = T> + From<f64> + Copy,
 {
+    pub fn x(&self) -> T {
+        self.data[0]
+    }
+
+    pub fn y(&self) -> T {
+        self.data[1]
+    }
+
+    pub fn z(&self) -> T {
+        self.data[2]
+    }
+
     pub fn cross(self, vector: &RaytracerVector<T, 3>) -> Self {
         let [x1, y1, z1] = self.data;
         let [x2, y2, z2] = vector.data;
