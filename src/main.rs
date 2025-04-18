@@ -15,10 +15,12 @@ use winit::{
 
 mod geometry;
 mod lights;
+mod materials;
 mod shapes;
 
 use geometry::{Vec3f, Vec4f};
 use lights::*;
+use materials::*;
 use shapes::*;
 
 const PI: f64 = f64::consts::PI;
@@ -278,63 +280,31 @@ impl ApplicationHandler for Raytracer<'_> {
                     let frame = pixels.frame_mut();
                     let fov: f64 = PI / 3.0;
 
-                    let red_material = Material::new(
-                        Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
-                        Vec3f::new_with_data([1.0, 0.1, 0.1]),
-                        Vec3f::new_with_data([0.2, 0.05, 0.05]),
-                        250.0,
-                        1.0,
-                    );
-
-                    let green_material = Material::new(
-                        Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
-                        Vec3f::new_with_data([0.1, 1.0, 0.1]),
-                        Vec3f::new_with_data([0.05, 0.2, 0.05]),
-                        125.0,
-                        1.0,
-                    );
-
-                    let blue_material = Material::new(
-                        Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
-                        Vec3f::new_with_data([0.1, 0.1, 1.0]),
-                        Vec3f::new_with_data([0.05, 0.05, 0.2]),
-                        125.0,
-                        1.0,
-                    );
-
-                    let mirror_material = Material::new(
-                        Vec4f::new_with_data([0.0, 0.0, 0.9, 0.03]),
-                        Vec3f::new_with_data([1.0, 1.0, 1.0]),
-                        Vec3f::new_with_data([0.0, 0.0, 0.0]),
-                        1000.0,
-                        1.0,
-                    );
-
                     let shapes: Rc<Vec<Box<dyn Shape>>> = Rc::new(vec![
                         Box::new(Sphere::new(
                             Vec3f::new_with_data([0.0, -1.0, -7.0]),
                             2.0,
-                            red_material,
+                            RED_MATERIAL,
                         )),
                         Box::new(Sphere::new(
                             Vec3f::new_with_data([2.0, 0.0, -4.0]),
                             1.0,
-                            green_material,
+                            GREEN_MATERIAL,
                         )),
                         Box::new(Sphere::new(
                             Vec3f::new_with_data([-2.0, 1.0, -5.0]),
                             1.5,
-                            blue_material,
+                            BLUE_MATERIAL,
                         )),
                         Box::new(Sphere::new(
                             Vec3f::new_with_data([-0.5, -0.75, -2.0]),
                             0.25,
-                            mirror_material,
+                            GLASS_MATERIAL,
                         )),
                         Box::new(Sphere::new(
                             Vec3f::new_with_data([0.5, 1.5, -3.5]),
                             0.4,
-                            mirror_material,
+                            MIRROR_MATERIAL,
                         )),
                     ]);
 

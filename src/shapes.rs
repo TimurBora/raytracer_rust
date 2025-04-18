@@ -34,6 +34,23 @@ impl Material {
             refractive_index,
         }
     }
+
+    pub const fn const_new(
+        albedo: Vec4f,
+        diffuse_color: Vec3f,
+        ambient_color: Vec3f,
+        specular_exponent: f64,
+        refractive_index: f64,
+    ) -> Self {
+        Material {
+            albedo,
+            diffuse_color,
+            ambient_color,
+            specular_exponent,
+            refractive_index,
+        }
+    }
+
     pub fn albedo(&self) -> Vec4f {
         self.albedo
     }
