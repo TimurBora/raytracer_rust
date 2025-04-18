@@ -1,5 +1,67 @@
-use crate::Material;
 use crate::{Vec3f, Vec4f};
+
+#[derive(Clone, Copy)]
+pub struct Material {
+    albedo: Vec4f,
+    diffuse_color: Vec3f,
+    ambient_color: Vec3f,
+    specular_exponent: f64,
+    refractive_index: f64,
+}
+
+impl Material {
+    pub fn new(
+        albedo: Vec4f,
+        diffuse_color: Vec3f,
+        ambient_color: Vec3f,
+        specular_exponent: f64,
+        refractive_index: f64,
+    ) -> Self {
+        Material {
+            albedo,
+            diffuse_color,
+            ambient_color,
+            specular_exponent,
+            refractive_index,
+        }
+    }
+
+    pub const fn const_new(
+        albedo: Vec4f,
+        diffuse_color: Vec3f,
+        ambient_color: Vec3f,
+        specular_exponent: f64,
+        refractive_index: f64,
+    ) -> Self {
+        Material {
+            albedo,
+            diffuse_color,
+            ambient_color,
+            specular_exponent,
+            refractive_index,
+        }
+    }
+
+    pub fn albedo(&self) -> Vec4f {
+        self.albedo
+    }
+
+    pub fn diffuse_color(&self) -> Vec3f {
+        self.diffuse_color
+    }
+
+    pub fn ambient_color(&self) -> Vec3f {
+        self.ambient_color
+    }
+
+    pub fn specular_exponent(&self) -> f64 {
+        self.specular_exponent
+    }
+
+    pub fn refractive_index(&self) -> f64 {
+        self.refractive_index
+    }
+}
 
 const RED_MATERIAL_ALBEDO: Vec4f = Vec4f::const_new_with_data([0.6, 0.3, 0.0, 0.1]);
 const RED_MATERIAL_DIFFUSE_COLOR: Vec3f = Vec3f::const_new_with_data([1.0, 0.1, 0.1]);
