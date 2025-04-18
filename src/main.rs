@@ -144,7 +144,7 @@ fn cast_ray(
         depth + 1,
     );
 
-    let refract_direction = refract(direction, normal, material.refractive_index).normalize(None);
+    let refract_direction = refract(direction, normal, material.refractive_index()).normalize(None);
     let refract_origin = adjust_ray_origin(refract_direction, hit, normal);
     let refract_color = cast_ray(
         refract_origin,
@@ -185,7 +185,7 @@ fn cast_ray(
 
         diffuse_light_intensity += light.intensity() * f64::max(0.0, light_direction * normal);
         specular_light_intensity +=
-            (reflect.max(0.0)).powf(material.specular_exponent) * light.intensity();
+            (reflect.max(0.0)).powf(material.specular_exponent()) * light.intensity();
     }
 
     calculate_final_color(
@@ -206,11 +206,12 @@ fn calculate_final_color(
     reflect_color: Vec3f,
     refract_color: Vec3f,
 ) -> Vec3f {
-    material.ambient_color * ambient_light_intensity
-        + material.diffuse_color * diffuse_light_intensity * material.albedo[0]
-        + Vec3f::new_with_data([1.0, 1.0, 1.0]) * specular_light_intensity * material.albedo[1]
-        + reflect_color * material.albedo[2]
-        + refract_color * material.albedo[3]
+    let albedo = material.albedo();
+    material.ambient_color() * ambient_light_intensity
+        + material.diffuse_color() * diffuse_light_intensity * albedo[0]
+        + Vec3f::new_with_data([1.0, 1.0, 1.0]) * specular_light_intensity * albedo[1]
+        + reflect_color * albedo[2]
+        + refract_color * albedo[3]
 }
 
 struct Raytracer<'win> {
@@ -277,37 +278,37 @@ impl ApplicationHandler for Raytracer<'_> {
                     let frame = pixels.frame_mut();
                     let fov: f64 = PI / 3.0;
 
-                    let red_material = Material {
-                        albedo: Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
-                        diffuse_color: Vec3f::new_with_data([1.0, 0.1, 0.1]),
-                        ambient_color: Vec3f::new_with_data([0.2, 0.05, 0.05]),
-                        specular_exponent: 250.0,
-                        refractive_index: 1.0,
-                    };
+                    let red_material = Material::new(
+                        Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
+                        Vec3f::new_with_data([1.0, 0.1, 0.1]),
+                        Vec3f::new_with_data([0.2, 0.05, 0.05]),
+                        250.0,
+                        1.0,
+                    );
 
-                    let green_material = Material {
-                        albedo: Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
-                        diffuse_color: Vec3f::new_with_data([0.1, 1.0, 0.1]),
-                        ambient_color: Vec3f::new_with_data([0.05, 0.2, 0.05]),
-                        specular_exponent: 125.0,
-                        refractive_index: 1.0,
-                    };
+                    let green_material = Material::new(
+                        Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
+                        Vec3f::new_with_data([0.1, 1.0, 0.1]),
+                        Vec3f::new_with_data([0.05, 0.2, 0.05]),
+                        125.0,
+                        1.0,
+                    );
 
-                    let blue_material = Material {
-                        albedo: Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
-                        diffuse_color: Vec3f::new_with_data([0.1, 0.1, 1.0]),
-                        ambient_color: Vec3f::new_with_data([0.05, 0.05, 0.2]),
-                        specular_exponent: 125.0,
-                        refractive_index: 1.0,
-                    };
+                    let blue_material = Material::new(
+                        Vec4f::new_with_data([0.6, 0.3, 0.0, 0.1]),
+                        Vec3f::new_with_data([0.1, 0.1, 1.0]),
+                        Vec3f::new_with_data([0.05, 0.05, 0.2]),
+                        125.0,
+                        1.0,
+                    );
 
-                    let mirror_material = Material {
-                        albedo: Vec4f::new_with_data([0.0, 0.0, 0.9, 0.03]),
-                        diffuse_color: Vec3f::new_with_data([1.0, 1.0, 1.0]),
-                        ambient_color: Vec3f::new_with_data([0.0, 0.0, 0.0]),
-                        specular_exponent: 1000.0,
-                        refractive_index: 1.0,
-                    };
+                    let mirror_material = Material::new(
+                        Vec4f::new_with_data([0.0, 0.0, 0.9, 0.03]),
+                        Vec3f::new_with_data([1.0, 1.0, 1.0]),
+                        Vec3f::new_with_data([0.0, 0.0, 0.0]),
+                        1000.0,
+                        1.0,
+                    );
 
                     let shapes: Rc<Vec<Box<dyn Shape>>> = Rc::new(vec![
                         Box::new(Sphere::new(
