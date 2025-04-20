@@ -34,7 +34,7 @@ use lights::{AmbientLight, DirectionalLight, Light, LightType, PointLight};
 use materials::{
     BLUE_MATERIAL, GLASS_MATERIAL, GREEN_MATERIAL, MIRROR_MATERIAL, Material, RED_MATERIAL,
 };
-use shapes::{InfinityPlane, Shape, Sphere};
+use shapes::{InfinityPlane, Intersectable, Shape, ShapeType, Sphere};
 
 const PI: f64 = f64::consts::PI;
 const MAX_DEPTH: u32 = 4;
@@ -82,7 +82,7 @@ fn is_in_shadow(
     point: Vec3f,
     light_direction: Vec3f,
     light_distance: f64,
-    shapes: &Rc<Vec<Box<dyn Shape>>>,
+    shapes: &Rc<Vec<ShapeType>>,
 ) -> (bool, Option<(Vec3f, Vec3f)>) {
     let shadow_origin = adjust_ray_origin(light_direction, point, normal);
     let scene_intersect_option = scene_intersect(shadow_origin, light_direction, shapes);
@@ -101,7 +101,7 @@ fn is_in_shadow(
 fn scene_intersect(
     origin: Vec3f,
     direction: Vec3f,
-    shapes: &Rc<Vec<Box<dyn Shape>>>,
+    shapes: &Rc<Vec<ShapeType>>,
 ) -> Option<(Vec3f, Vec3f, Material)> {
     let mut closest_distance = f64::INFINITY;
     let mut hit_point = None;
@@ -131,7 +131,7 @@ fn scene_intersect(
 fn cast_ray(
     origin: Vec3f,
     direction: Vec3f,
-    shapes: &Rc<Vec<Box<dyn Shape>>>,
+    shapes: &Rc<Vec<ShapeType>>,
     lights: &[LightType],
     depth: u32,
 ) -> Vec3f {
@@ -287,33 +287,33 @@ impl ApplicationHandler for Raytracer<'_> {
                     let frame = pixels.frame_mut();
                     let fov: f64 = PI / 3.0;
 
-                    let shapes: Rc<Vec<Box<dyn Shape>>> = Rc::new(vec![
-                        Box::new(Sphere::new(
+                    let shapes: Rc<Vec<ShapeType>> = Rc::new(vec![
+                        ShapeType::Sphere(Sphere::new(
                             Vec3f::new_with_data([0.0, -1.0, -7.0]),
                             2.0,
                             RED_MATERIAL,
                         )),
-                        Box::new(Sphere::new(
+                        ShapeType::Sphere(Sphere::new(
                             Vec3f::new_with_data([2.0, 0.0, -4.0]),
                             1.0,
                             GREEN_MATERIAL,
                         )),
-                        Box::new(Sphere::new(
+                        ShapeType::Sphere(Sphere::new(
                             Vec3f::new_with_data([-2.0, 1.0, -5.0]),
                             1.5,
                             BLUE_MATERIAL,
                         )),
-                        Box::new(Sphere::new(
+                        ShapeType::Sphere(Sphere::new(
                             Vec3f::new_with_data([-0.5, -0.75, -2.0]),
                             0.25,
                             GLASS_MATERIAL,
                         )),
-                        Box::new(Sphere::new(
+                        ShapeType::Sphere(Sphere::new(
                             Vec3f::new_with_data([0.5, 1.5, -3.5]),
                             0.4,
                             MIRROR_MATERIAL,
                         )),
-                        Box::new(InfinityPlane::new(
+                        ShapeType::InfinityPlane(InfinityPlane::new(
                             Vec3f::new_with_data([0.0, -2.9, 0.0]),
                             Vec3f::new_with_data([0.0, -10.0, -1.0]),
                             MIRROR_MATERIAL,

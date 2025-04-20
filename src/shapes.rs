@@ -11,7 +11,7 @@ pub trait Shape: Intersectable {
     fn get_material(&self) -> Material;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Sphere {
     center: Vec3f,
     radius: f64,
@@ -64,6 +64,7 @@ impl Shape for Sphere {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct BoxShape {
     max_point: Vec3f,
     min_point: Vec3f,
@@ -138,6 +139,7 @@ impl Shape for BoxShape {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct InfinityPlane {
     position: Vec3f,
     normal: Vec3f,
@@ -178,5 +180,41 @@ impl Intersectable for InfinityPlane {
         }
 
         Some(s)
+    }
+}
+
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+pub enum ShapeType {
+    Sphere(Sphere),
+    BoxShape(BoxShape),
+    InfinityPlane(InfinityPlane),
+}
+
+impl Shape for ShapeType {
+    fn get_material(&self) -> Material {
+        match self {
+            Self::Sphere(sphere) => sphere.get_material(),
+            Self::BoxShape(box_shape) => box_shape.get_material(),
+            Self::InfinityPlane(plane) => plane.get_material(),
+        }
+    }
+
+    fn get_normal(&self, hit_point: Vec3f) -> Vec3f {
+        match self {
+            Self::Sphere(sphere) => sphere.get_normal(hit_point),
+            Self::BoxShape(box_shape) => box_shape.get_normal(hit_point),
+            Self::InfinityPlane(plane) => plane.get_normal(hit_point),
+        }
+    }
+}
+
+impl Intersectable for ShapeType {
+    fn ray_intersect(&self, origin: Vec3f, direction: Vec3f) -> Option<f64> {
+        match self {
+            Self::Sphere(sphere) => sphere.ray_intersect(origin, direction),
+            Self::BoxShape(box_shape) => box_shape.ray_intersect(origin, direction),
+            Self::InfinityPlane(plane) => plane.ray_intersect(origin, direction),
+        }
     }
 }

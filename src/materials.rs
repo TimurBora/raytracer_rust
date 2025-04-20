@@ -1,6 +1,6 @@
 use crate::{Vec3f, Vec4f};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Material {
     albedo: Vec4f,
     diffuse_color: Vec3f,
