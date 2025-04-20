@@ -1,3 +1,14 @@
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::cargo)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+#![warn(clippy::todo)]
+#![warn(clippy::dbg_macro)]
+
 use std::mem::swap;
 use std::rc::Rc;
 use std::sync::Arc;
