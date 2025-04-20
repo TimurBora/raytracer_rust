@@ -135,3 +135,45 @@ impl Shape for BoxShape {
         normal
     }
 }
+
+pub struct InfinityPlane {
+    position: Vec3f,
+    normal: Vec3f,
+    material: Material,
+}
+
+impl InfinityPlane {
+    pub fn new(position: Vec3f, normal: Vec3f, material: Material) -> Self {
+        InfinityPlane {
+            position,
+            normal: normal.normalize(None),
+            material,
+        }
+    }
+}
+
+impl Shape for InfinityPlane {
+    fn get_material(&self) -> Material {
+        self.material
+    }
+
+    fn get_normal(&self, _hit_point: Vec3f) -> Vec3f {
+        self.normal
+    }
+}
+
+impl Intersectable for InfinityPlane {
+    fn ray_intersect(&self, origin: Vec3f, direction: Vec3f) -> Option<f64> {
+        let ray_point = direction * self.normal;
+        if f64::abs(ray_point) < EPSILON {
+            return None;
+        }
+
+        let s = (self.normal * (self.position - origin)) / ray_point;
+        if s < 0.0 {
+            return None;
+        }
+
+        Some(s)
+    }
+}

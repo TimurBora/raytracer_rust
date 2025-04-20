@@ -306,6 +306,11 @@ impl ApplicationHandler for Raytracer<'_> {
                             0.4,
                             MIRROR_MATERIAL,
                         )),
+                        Box::new(InfinityPlane::new(
+                            Vec3f::new_with_data([0.0, -2.9, 0.0]),
+                            Vec3f::new_with_data([0.0, -10.0, -1.0]),
+                            MIRROR_MATERIAL,
+                        )),
                     ]);
 
                     let lights = vec![
@@ -334,7 +339,7 @@ impl ApplicationHandler for Raytracer<'_> {
                                 -(2.0 * (j as f64 + 0.5) / HEIGHT as f64 - 1.0) * (fov / 2.0).tan();
                             let dir = Vec3f::new_with_data([x, y, -1.0]).normalize(None);
                             let color = cast_ray(
-                                Vec3f::new_with_data([0.0, 0.0, 0.0]),
+                                Vec3f::new_with_data([0.0, 0.0, 2.0]),
                                 dir,
                                 shapes.clone(),
                                 lights.clone(),
