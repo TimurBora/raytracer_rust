@@ -30,9 +30,11 @@ mod materials;
 mod shapes;
 
 use geometry::{Vec3f, Vec4f};
-use lights::*;
-use materials::*;
-use shapes::*;
+use lights::{AmbientLight, DirectionalLight, Light, LightType, PointLight};
+use materials::{
+    BLUE_MATERIAL, GLASS_MATERIAL, GREEN_MATERIAL, MIRROR_MATERIAL, Material, RED_MATERIAL,
+};
+use shapes::{InfinityPlane, Shape, Sphere};
 
 const PI: f64 = f64::consts::PI;
 const MAX_DEPTH: u32 = 4;
@@ -48,23 +50,23 @@ fn reflect(direction: Vec3f, normal: Vec3f) -> Vec3f {
 
 fn refract(direction: Vec3f, normal: Vec3f, refractive_index: f64) -> Vec3f {
     let mut cosi = (direction * normal).clamp(-1.0, 1.0);
-    let mut etai = 1.0;
-    let mut etat = refractive_index;
+    let mut ior_in = 1.0;
+    let mut ior_out = refractive_index;
     let mut n = normal;
 
     if cosi < 0.0 {
         cosi *= -1.0;
-        swap(&mut etai, &mut etat);
+        swap(&mut ior_in, &mut ior_out);
         n = -n;
     }
 
-    let eta = etai / etat;
-    let k = 1.0 - eta * eta * (1.0 - cosi * cosi);
+    let eta = ior_in / ior_out;
+    let k = (eta * eta).mul_add(-cosi.mul_add(-cosi, 1.0), 1.0);
 
     if k < 0.0 {
         return Vec3f::new_with_data([0.0, 0.0, 0.0]);
     }
-    direction * eta + n * (eta * cosi - k.sqrt())
+    direction * eta + n * eta.mul_add(cosi, -k.sqrt())
 }
 
 fn adjust_ray_origin(direction: Vec3f, point: Vec3f, normal: Vec3f) -> Vec3f {
@@ -80,14 +82,12 @@ fn is_in_shadow(
     point: Vec3f,
     light_direction: Vec3f,
     light_distance: f64,
-    shapes: Rc<Vec<Box<dyn Shape>>>,
+    shapes: &Rc<Vec<Box<dyn Shape>>>,
 ) -> (bool, Option<(Vec3f, Vec3f)>) {
     let shadow_origin = adjust_ray_origin(light_direction, point, normal);
-    let scene_intersect_option =
-        scene_intersect(shadow_origin, light_direction, Rc::clone(&shapes));
-    let scene_intersect_result = match scene_intersect_option {
-        Some(hit_point) => hit_point,
-        None => return (false, None),
+    let scene_intersect_option = scene_intersect(shadow_origin, light_direction, shapes);
+    let Some(scene_intersect_result) = scene_intersect_option else {
+        return (false, None);
     };
 
     let (shadow_hit, _, _) = scene_intersect_result;
@@ -101,7 +101,7 @@ fn is_in_shadow(
 fn scene_intersect(
     origin: Vec3f,
     direction: Vec3f,
-    shapes: Rc<Vec<Box<dyn Shape>>>,
+    shapes: &Rc<Vec<Box<dyn Shape>>>,
 ) -> Option<(Vec3f, Vec3f, Material)> {
     let mut closest_distance = f64::INFINITY;
     let mut hit_point = None;
@@ -131,14 +131,14 @@ fn scene_intersect(
 fn cast_ray(
     origin: Vec3f,
     direction: Vec3f,
-    shapes: Rc<Vec<Box<dyn Shape>>>,
-    lights: Vec<LightType>,
+    shapes: &Rc<Vec<Box<dyn Shape>>>,
+    lights: &[LightType],
     depth: u32,
 ) -> Vec3f {
-    let scene_intersect_option = scene_intersect(origin, direction, Rc::clone(&shapes));
-    let scene_intersect_result = match scene_intersect_option {
-        Some(hit_point) => hit_point,
-        None => return BACKGROUND_COLOR,
+    let scene_intersect_option = scene_intersect(origin, direction, shapes);
+
+    let Some(scene_intersect_result) = scene_intersect_option else {
+        return BACKGROUND_COLOR;
     };
 
     if depth > MAX_DEPTH {
@@ -149,28 +149,16 @@ fn cast_ray(
 
     let reflect_direction = reflect(direction, normal).normalize(None);
     let reflect_origin = adjust_ray_origin(reflect_direction, hit, normal);
-    let reflect_color = cast_ray(
-        reflect_origin,
-        reflect_direction,
-        Rc::clone(&shapes),
-        lights.clone(),
-        depth + 1,
-    );
+    let reflect_color = cast_ray(reflect_origin, reflect_direction, shapes, lights, depth + 1);
 
     let refract_direction = refract(direction, normal, material.refractive_index()).normalize(None);
     let refract_origin = adjust_ray_origin(refract_direction, hit, normal);
-    let refract_color = cast_ray(
-        refract_origin,
-        refract_direction,
-        Rc::clone(&shapes),
-        lights.clone(),
-        depth + 1,
-    );
+    let refract_color = cast_ray(refract_origin, refract_direction, shapes, lights, depth + 1);
 
     let mut diffuse_light_intensity = 0.0;
     let mut specular_light_intensity = 0.0;
     let mut ambient_light_intensity = 0.0;
-    for light in lights.iter() {
+    for light in lights {
         if light.is_ambient() {
             ambient_light_intensity += light.intensity();
             continue;
@@ -180,13 +168,8 @@ fn cast_ray(
         let light_distance = light.get_distance(hit);
         let reflect = reflect(light_direction, normal) * direction;
 
-        let (is_in_shadow, shadow_point) = is_in_shadow(
-            normal,
-            hit,
-            light_direction,
-            light_distance,
-            Rc::clone(&shapes),
-        );
+        let (is_in_shadow, shadow_point) =
+            is_in_shadow(normal, hit, light_direction, light_distance, shapes);
 
         if is_in_shadow {
             if let Some((origin, hit)) = shadow_point {
@@ -233,7 +216,7 @@ struct Raytracer<'win> {
 }
 
 impl Raytracer<'_> {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             window: None,
             pixels: None,
@@ -241,30 +224,43 @@ impl Raytracer<'_> {
     }
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn to_u8(color: f64) -> u8 {
+    (color.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
 impl ApplicationHandler for Raytracer<'_> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         println!("App resumed!");
 
-        let window = event_loop
-            .create_window(
-                WindowAttributes::default()
-                    .with_title("Raytracer")
-                    .with_inner_size(PhysicalSize::new(WIDTH, HEIGHT)),
-            )
-            .expect("Failed to create window");
+        let window = match event_loop.create_window(
+            WindowAttributes::default()
+                .with_title("Raytracer")
+                .with_inner_size(PhysicalSize::new(WIDTH, HEIGHT)),
+        ) {
+            Ok(w) => w,
+            Err(e) => {
+                eprintln!("Failed to create window: {e}");
+                return; // или handle иначе
+            }
+        };
 
         let window_arc = Arc::new(window);
-
         self.window = Some(Arc::clone(&window_arc));
 
         let surface_texture = SurfaceTexture::new(WIDTH, HEIGHT, Arc::clone(&window_arc));
-        self.pixels = Some(Pixels::new(WIDTH, HEIGHT, surface_texture).unwrap());
+        match Pixels::new(WIDTH, HEIGHT, surface_texture) {
+            Ok(p) => self.pixels = Some(p),
+            Err(e) => {
+                eprintln!("Failed to create Pixels: {e}");
+            }
+        };
     }
 
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        window_id: WindowId,
+        #[allow(unused_variables)] window_id: WindowId,
         event: WindowEvent,
     ) {
         match event {
@@ -342,29 +338,32 @@ impl ApplicationHandler for Raytracer<'_> {
 
                     for j in 0..HEIGHT {
                         for i in 0..WIDTH {
-                            let x = (2.0 * (i as f64 + 0.5) / WIDTH as f64 - 1.0)
+                            let x = (2.0 * (f64::from(i) + 0.5) / f64::from(WIDTH) - 1.0)
                                 * (fov / 2.0).tan()
-                                * WIDTH as f64
-                                / HEIGHT as f64;
-                            let y =
-                                -(2.0 * (j as f64 + 0.5) / HEIGHT as f64 - 1.0) * (fov / 2.0).tan();
+                                * f64::from(WIDTH)
+                                / f64::from(HEIGHT);
+                            let y = -(2.0 * (f64::from(j) + 0.5) / f64::from(HEIGHT) - 1.0)
+                                * (fov / 2.0).tan();
                             let dir = Vec3f::new_with_data([x, y, -1.0]).normalize(None);
                             let color = cast_ray(
                                 Vec3f::new_with_data([0.0, 0.0, 2.0]),
                                 dir,
-                                shapes.clone(),
-                                lights.clone(),
+                                &shapes.clone(),
+                                &lights.clone(),
                                 0,
                             );
 
                             let index = ((j * WIDTH + i) * 4) as usize;
-                            frame[index] = (color[0] * 255.0) as u8;
-                            frame[index + 1] = (color[1] * 255.0) as u8;
-                            frame[index + 2] = (color[2] * 255.0) as u8;
+                            frame[index] = to_u8(color[0]);
+                            frame[index + 1] = to_u8(color[1]);
+                            frame[index + 2] = to_u8(color[2]);
                             frame[index + 3] = 255;
                         }
                     }
-                    pixels.render().unwrap();
+                    match pixels.render() {
+                        Ok(()) => (),
+                        Err(err) => eprint!("Error with render pixels: {err}"),
+                    };
                 }
             }
 
@@ -373,7 +372,7 @@ impl ApplicationHandler for Raytracer<'_> {
     }
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
-        if let StartCause::Init = cause {
+        if cause == StartCause::Init {
             println!("Starting app!");
         }
 

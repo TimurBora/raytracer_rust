@@ -2,6 +2,12 @@
 name = "raytracer_rust"
 version = "0.1.0"
 edition = "2024"
+description = "A simple Rust raytracer"
+license = "None"
+repository = "https://github.com/TimurBora/raytracer_rust"
+categories = ["graphics", "raytracing"]
+keywords = ["raytracing", "rust", "graphics"]
+readme = "README.md"
 
 [dependencies]
 winit = "0.30.9"

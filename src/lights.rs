@@ -15,8 +15,8 @@ pub struct AmbientLight {
 }
 
 impl AmbientLight {
-    pub fn new(intensity: f64) -> Self {
-        AmbientLight { intensity }
+    pub const fn new(intensity: f64) -> Self {
+        Self { intensity }
     }
 }
 
@@ -45,8 +45,8 @@ pub struct PointLight {
 }
 
 impl PointLight {
-    pub fn new(intensity: f64, position: Vec3f) -> Self {
-        PointLight {
+    pub const fn new(intensity: f64, position: Vec3f) -> Self {
+        Self {
             intensity,
             position,
         }
@@ -74,8 +74,8 @@ pub struct DirectionalLight {
 }
 
 impl DirectionalLight {
-    pub fn new(intensity: f64, direction: Vec3f) -> Self {
-        DirectionalLight {
+    pub const fn new(intensity: f64, direction: Vec3f) -> Self {
+        Self {
             intensity,
             direction,
         }
@@ -106,28 +106,28 @@ pub enum LightType {
 impl Light for LightType {
     fn intensity(&self) -> f64 {
         match self {
-            LightType::Ambient(light) => light.intensity(),
-            LightType::Directional(light) => light.intensity(),
-            LightType::Point(light) => light.intensity(),
+            Self::Ambient(light) => light.intensity(),
+            Self::Directional(light) => light.intensity(),
+            Self::Point(light) => light.intensity(),
         }
     }
-    fn get_direction(&self, _point: Vec3f) -> Vec3f {
+    fn get_direction(&self, point: Vec3f) -> Vec3f {
         match self {
-            LightType::Ambient(light) => light.get_direction(_point),
-            LightType::Point(light) => light.get_direction(_point),
-            LightType::Directional(light) => light.get_direction(_point),
+            Self::Ambient(light) => light.get_direction(point),
+            Self::Point(light) => light.get_direction(point),
+            Self::Directional(light) => light.get_direction(point),
         }
     }
 
-    fn get_distance(&self, _point: Vec3f) -> f64 {
+    fn get_distance(&self, point: Vec3f) -> f64 {
         match self {
-            LightType::Ambient(light) => light.get_distance(_point),
-            LightType::Point(light) => light.get_distance(_point),
-            LightType::Directional(light) => light.get_distance(_point),
+            Self::Ambient(light) => light.get_distance(point),
+            Self::Point(light) => light.get_distance(point),
+            Self::Directional(light) => light.get_distance(point),
         }
     }
 
     fn is_ambient(&self) -> bool {
-        matches!(self, LightType::Ambient(_))
+        matches!(self, Self::Ambient(_))
     }
 }

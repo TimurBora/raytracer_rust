@@ -19,7 +19,8 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(center: Vec3f, radius: f64, material: Material) -> Self {
+    #[allow(dead_code)]
+    pub const fn new(center: Vec3f, radius: f64, material: Material) -> Self {
         Self {
             center,
             radius,
@@ -32,13 +33,13 @@ impl Intersectable for Sphere {
     fn ray_intersect(&self, origin: Vec3f, direction: Vec3f) -> Option<f64> {
         let l = self.center - origin;
         let tca = l * direction;
-        let d2 = l * l - tca * tca;
+        let d2 = tca.mul_add(-tca, l * l);
 
         if d2 > self.radius * self.radius {
             return None;
         }
 
-        let thc = (self.radius * self.radius - d2).sqrt();
+        let thc = self.radius.mul_add(self.radius, -d2).sqrt();
         let mut t0 = tca - thc;
         let t1 = tca + thc;
 
@@ -70,8 +71,9 @@ pub struct BoxShape {
 }
 
 impl BoxShape {
-    pub fn new(max_point: Vec3f, min_point: Vec3f, material: Material) -> Self {
-        BoxShape {
+    #[allow(dead_code)]
+    pub const fn new(max_point: Vec3f, min_point: Vec3f, material: Material) -> Self {
+        Self {
             max_point,
             min_point,
             material,
@@ -143,8 +145,9 @@ pub struct InfinityPlane {
 }
 
 impl InfinityPlane {
+    #[allow(dead_code)]
     pub fn new(position: Vec3f, normal: Vec3f, material: Material) -> Self {
-        InfinityPlane {
+        Self {
             position,
             normal: normal.normalize(None),
             material,
