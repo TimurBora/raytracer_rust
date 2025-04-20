@@ -1,5 +1,20 @@
 use crate::Vec3f;
 
+pub fn init_default_lights() -> Vec<LightType> {
+    vec![
+        LightType::Ambient(AmbientLight::new(0.1)),
+        LightType::Directional(DirectionalLight::new(
+            2.0,
+            Vec3f::new_with_data([-1.0, -1.0, -1.0]).normalize(None),
+        )),
+        LightType::Point(PointLight::new(2.0, Vec3f::new_with_data([2.0, 5.0, 0.0]))),
+        LightType::Point(PointLight::new(
+            0.5,
+            Vec3f::new_with_data([-1.0, -1.0, 5.0]),
+        )),
+    ]
+}
+
 pub trait Light {
     fn intensity(&self) -> f64;
     fn get_distance(&self, _point: Vec3f) -> f64;

@@ -2,6 +2,43 @@ use crate::EPSILON;
 use crate::Material;
 use crate::Vec3f;
 
+use crate::{BLUE_MATERIAL, GLASS_MATERIAL, GREEN_MATERIAL, MIRROR_MATERIAL, RED_MATERIAL};
+
+pub fn init_default_shapes() -> Vec<ShapeType> {
+    vec![
+        ShapeType::Sphere(Sphere::new(
+            Vec3f::new_with_data([0.0, -1.0, -7.0]),
+            2.0,
+            RED_MATERIAL,
+        )),
+        ShapeType::Sphere(Sphere::new(
+            Vec3f::new_with_data([2.0, 0.0, -4.0]),
+            1.0,
+            GREEN_MATERIAL,
+        )),
+        ShapeType::Sphere(Sphere::new(
+            Vec3f::new_with_data([-2.0, 1.0, -5.0]),
+            1.5,
+            BLUE_MATERIAL,
+        )),
+        ShapeType::Sphere(Sphere::new(
+            Vec3f::new_with_data([-0.5, -0.75, -2.0]),
+            0.25,
+            GLASS_MATERIAL,
+        )),
+        ShapeType::Sphere(Sphere::new(
+            Vec3f::new_with_data([0.5, 1.5, -3.5]),
+            0.4,
+            MIRROR_MATERIAL,
+        )),
+        ShapeType::InfinityPlane(InfinityPlane::new(
+            Vec3f::new_with_data([0.0, -2.9, 0.0]),
+            Vec3f::new_with_data([0.0, -10.0, -1.0]),
+            MIRROR_MATERIAL,
+        )),
+    ]
+}
+
 pub trait Intersectable {
     fn ray_intersect(&self, origin: Vec3f, direction: Vec3f) -> Option<f64>;
 }
