@@ -9,7 +9,6 @@
 #![warn(clippy::todo)]
 #![warn(clippy::dbg_macro)]
 
-use std::rc::Rc;
 use std::sync::Arc;
 use std::{error::Error, f64};
 

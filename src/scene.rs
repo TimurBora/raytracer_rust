@@ -97,33 +97,14 @@ fn scene_intersect(
     hit_point
 }
 
-fn cast_ray(
-    origin: Vec3f,
+fn compute_lighthing(
+    hit: Vec3f,
+    normal: Vec3f,
     direction: Vec3f,
-    shapes: &[ShapeType],
     lights: &[LightType],
-    depth: u32,
-) -> Vec3f {
-    let scene_intersect_option = scene_intersect(origin, direction, shapes);
-
-    let Some(scene_intersect_result) = scene_intersect_option else {
-        return BACKGROUND_COLOR;
-    };
-
-    if depth > MAX_DEPTH {
-        return BACKGROUND_COLOR;
-    }
-
-    let (hit, normal, material) = scene_intersect_result;
-
-    let reflect_direction = reflect(direction, normal).normalize(None);
-    let reflect_origin = adjust_ray_origin(reflect_direction, hit, normal);
-    let reflect_color = cast_ray(reflect_origin, reflect_direction, shapes, lights, depth + 1);
-
-    let refract_direction = refract(direction, normal, material.refractive_index()).normalize(None);
-    let refract_origin = adjust_ray_origin(refract_direction, hit, normal);
-    let refract_color = cast_ray(refract_origin, refract_direction, shapes, lights, depth + 1);
-
+    material: Material,
+    shapes: &[ShapeType],
+) -> (f64, f64, f64) {
     let mut diffuse_light_intensity = 0.0;
     let mut specular_light_intensity = 0.0;
     let mut ambient_light_intensity = 0.0;
@@ -153,11 +134,44 @@ fn cast_ray(
             (reflect.max(0.0)).powf(material.specular_exponent()) * light.intensity();
     }
 
-    calculate_final_color(
-        material,
+    (
         ambient_light_intensity,
         diffuse_light_intensity,
         specular_light_intensity,
+    )
+}
+
+fn cast_ray(
+    origin: Vec3f,
+    direction: Vec3f,
+    shapes: &[ShapeType],
+    lights: &[LightType],
+    depth: u32,
+) -> Vec3f {
+    if depth > MAX_DEPTH {
+        return BACKGROUND_COLOR;
+    }
+
+    let Some((hit, normal, material)) = scene_intersect(origin, direction, shapes) else {
+        return BACKGROUND_COLOR;
+    };
+
+    let reflect_direction = reflect(direction, normal).normalize(None);
+    let reflect_origin = adjust_ray_origin(reflect_direction, hit, normal);
+    let reflect_color = cast_ray(reflect_origin, reflect_direction, shapes, lights, depth + 1);
+
+    let refract_direction = refract(direction, normal, material.refractive_index()).normalize(None);
+    let refract_origin = adjust_ray_origin(refract_direction, hit, normal);
+    let refract_color = cast_ray(refract_origin, refract_direction, shapes, lights, depth + 1);
+
+    let (ambient, diffuse, specular) =
+        compute_lighthing(hit, normal, direction, lights, material, shapes);
+
+    calculate_final_color(
+        material,
+        ambient,
+        diffuse,
+        specular,
         reflect_color,
         refract_color,
     )
@@ -189,10 +203,12 @@ impl Scene {
         Self { shapes, lights }
     }
 
+    #[allow(dead_code)]
     pub fn push_light(&mut self, light: LightType) {
         self.lights.push(light);
     }
 
+    #[allow(dead_code)]
     pub fn push_shape(&mut self, shape: ShapeType) {
         self.shapes.push(shape);
     }
