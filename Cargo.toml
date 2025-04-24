@@ -13,6 +13,8 @@ readme = "README.md"
 winit = "0.30.9"
 anyhow = "1.0.97"
 pixels = "0.15.0"
+rayon = "1.10.0"
+atomic_float = "1.1.0"
 
 [profile.release]
 debug = true

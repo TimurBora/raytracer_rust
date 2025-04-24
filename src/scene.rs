@@ -1,3 +1,5 @@
+use core::f64;
+use rayon::prelude::*;
 use std::mem::swap;
 
 use crate::Vec3f;
@@ -10,7 +12,7 @@ use crate::{
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn to_u8(color: f64) -> u8 {
-    (color.clamp(0.0, 1.0) * 255.0).round() as u8
+    (color * 255.0).round() as u8
 }
 
 fn reflect(direction: Vec3f, normal: Vec3f) -> Vec3f {
@@ -72,29 +74,26 @@ fn scene_intersect(
     direction: Vec3f,
     shapes: &[ShapeType],
 ) -> Option<(Vec3f, Vec3f, Material)> {
-    let mut closest_distance = f64::INFINITY;
-    let mut hit_point = None;
-
-    for shape in shapes {
-        let dist_i = shape.ray_intersect(origin, direction);
-
-        if let Some(distance) = dist_i {
-            if distance < closest_distance {
+    shapes
+        .iter()
+        .filter_map(|shape| {
+            shape.ray_intersect(origin, direction).map(|distance| {
                 let hit = origin + direction * distance;
                 let normal = shape.get_normal(hit);
                 let material = shape.get_material();
-                closest_distance = distance;
-
-                hit_point = Some((hit, normal, material));
-            }
-        }
-    }
-
-    if closest_distance > 1000.0 {
-        return None;
-    }
-
-    hit_point
+                (distance, (hit, normal, material))
+            })
+        })
+        .min_by(
+            |a, b| match (a.0.partial_cmp(&b.0), a.0.is_nan(), b.0.is_nan()) {
+                (Some(order), false, false) => order,
+                (_, true, false) => std::cmp::Ordering::Greater,
+                (_, false, true) => std::cmp::Ordering::Less,
+                _ => std::cmp::Ordering::Equal,
+            },
+        )
+        .filter(|(dist, _)| *dist < 1000.0)
+        .map(|(_, result)| result)
 }
 
 fn compute_lighthing(
@@ -105,40 +104,38 @@ fn compute_lighthing(
     material: Material,
     shapes: &[ShapeType],
 ) -> (f64, f64, f64) {
-    let mut diffuse_light_intensity = 0.0;
-    let mut specular_light_intensity = 0.0;
-    let mut ambient_light_intensity = 0.0;
-    for light in lights {
-        if light.is_ambient() {
-            ambient_light_intensity += light.intensity();
-            continue;
-        }
+    let (ambient, specular, diffuse) = lights
+        .iter()
+        .map(|light| {
+            if light.is_ambient() {
+                return (light.intensity(), 0.0, 0.0);
+            }
 
-        let light_direction = light.get_direction(hit);
-        let light_distance = light.get_distance(hit);
-        let reflect = reflect(light_direction, normal) * direction;
+            let light_direction = light.get_direction(hit);
+            let light_distance = light.get_distance(hit);
+            let reflect = reflect(light_direction, normal) * direction;
 
-        let (is_in_shadow, shadow_point) =
-            is_in_shadow(normal, hit, light_direction, light_distance, shapes);
+            let (shadowed, shadow_point) =
+                is_in_shadow(normal, hit, light_direction, light_distance, shapes);
 
-        if is_in_shadow {
-            if let Some((origin, hit)) = shadow_point {
-                if (hit - origin).length() < light_distance {
-                    continue;
+            if shadowed {
+                if let Some((origin, hit)) = shadow_point {
+                    if (hit - origin).length() < light_distance {
+                        return (0.0, 0.0, 0.0);
+                    }
                 }
             }
-        }
 
-        diffuse_light_intensity += light.intensity() * f64::max(0.0, light_direction * normal);
-        specular_light_intensity +=
-            (reflect.max(0.0)).powf(material.specular_exponent()) * light.intensity();
-    }
+            let diffuse = light.intensity() * f64::max(0.0, light_direction * normal);
+            let specular = reflect.max(0.0).powf(material.specular_exponent()) * light.intensity();
 
-    (
-        ambient_light_intensity,
-        diffuse_light_intensity,
-        specular_light_intensity,
-    )
+            (0.0, specular, diffuse)
+        })
+        .fold((0.0, 0.0, 0.0), |acc, val| {
+            (acc.0 + val.0, acc.1 + val.1, acc.2 + val.2)
+        });
+
+    (ambient, diffuse, specular)
 }
 
 fn cast_ray(
@@ -214,28 +211,37 @@ impl Scene {
     }
 
     pub fn render_scene(&self, frame: &mut [u8], height: u32, width: u32, fov: f64) {
-        for j in 0..height {
-            for i in 0..width {
+        let fov_tan = (fov / 2.0).tan();
+        let origin = Vec3f::new_with_data([0.0, 0.0, 2.0]);
+        frame
+            .par_chunks_mut(4)
+            .enumerate()
+            .for_each(|(index, pixel)| {
+                let i_usize = index % (width as usize);
+                let j_usize = index / (width as usize);
+
+                let Ok(i) = u32::try_from(i_usize) else {
+                    eprintln!("Index i out of u32 range: {i_usize}");
+                    return;
+                };
+
+                let Ok(j) = u32::try_from(j_usize) else {
+                    eprintln!("Index j out of u64 range: {j_usize}");
+                    return;
+                };
+
                 let x = (2.0 * (f64::from(i) + 0.5) / f64::from(width) - 1.0)
-                    * (fov / 2.0).tan()
+                    * fov_tan
                     * f64::from(width)
                     / f64::from(height);
-                let y = -(2.0 * (f64::from(j) + 0.5) / f64::from(height) - 1.0) * (fov / 2.0).tan();
+                let y = -(2.0 * (f64::from(j) + 0.5) / f64::from(height) - 1.0) * fov_tan;
                 let dir = Vec3f::new_with_data([x, y, -1.0]).normalize(None);
-                let color = cast_ray(
-                    Vec3f::new_with_data([0.0, 0.0, 2.0]),
-                    dir,
-                    &self.shapes,
-                    &self.lights,
-                    0,
-                );
+                let color = cast_ray(origin, dir, &self.shapes, &self.lights, 0);
 
-                let index = ((j * width + i) * 4) as usize;
-                frame[index] = to_u8(color[0]);
-                frame[index + 1] = to_u8(color[1]);
-                frame[index + 2] = to_u8(color[2]);
-                frame[index + 3] = 255;
-            }
-        }
+                pixel[0] = to_u8(color[0]);
+                pixel[1] = to_u8(color[1]);
+                pixel[2] = to_u8(color[2]);
+                pixel[3] = 255;
+            });
     }
 }
