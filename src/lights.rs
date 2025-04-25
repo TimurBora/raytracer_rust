@@ -89,10 +89,10 @@ pub struct DirectionalLight {
 }
 
 impl DirectionalLight {
-    pub const fn new(intensity: f64, direction: Vec3f) -> Self {
+    pub fn new(intensity: f64, direction: Vec3f) -> Self {
         Self {
             intensity,
-            direction,
+            direction: direction.normalize(None),
         }
     }
 }
